@@ -1,0 +1,41 @@
+{
+  "name": "shanghai-fm-radio-recorder",
+  "version": "3.1.12",
+  "description": "Zero-dependency local web app for lossless recording of Shanghai FM radio live streams, with FFmpeg wrapping, parallel jobs, EPG scheduling and exclusive per-job monitoring.",
+  "license": "MIT",
+  "private": false,
+  "type": "commonjs",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/selftest.js && node test/ui-delete-chain.js && node test/monitor-chain.js && node test/preview-chain.js && node test/ffmpeg-installer.js && node test/plan-prefix.js && node test/playback-chain.js && node test/empty-segment.js",
+    "test:modules": "node test/selftest.js",
+    "test:ui": "node test/ui-delete-chain.js",
+    "test:monitor": "node test/monitor-chain.js",
+    "test:preview": "node test/preview-chain.js",
+    "test:ffmpeg-installer": "node test/ffmpeg-installer.js",
+    "test:prefix": "node test/plan-prefix.js",
+    "test:playback": "node test/playback-chain.js",
+    "test:empty-segment": "node test/empty-segment.js",
+    "install:ffmpeg": "node tools/install-ffmpeg.js",
+    "ffmpeg:check": "node tools/install-ffmpeg.js --check",
+    "ffmpeg:update": "node tools/install-ffmpeg.js --update",
+    "check": "node --check server.js && node --check public/app.js && node --check tools/install-ffmpeg.js"
+  },
+  "keywords": [
+    "radio",
+    "fm",
+    "shanghai",
+    "recorder",
+    "ffmpeg",
+    "hls",
+    "mp3",
+    "stream",
+    "epg",
+    "lossless"
+  ],
+  "dependencies": {}
+}

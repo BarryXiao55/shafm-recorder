@@ -1,0 +1,49 @@
+# 仓库根目录忽略规则（GitHub 上传专用）
+
+# WorkBuddy 项目数据：只忽略，不删除
+.workbuddy/
+
+# 运行时配置与状态：含本机绝对路径、排期、可能填写的 Webhook 地址
+config.json
+runtime.json
+alerts.json
+epg-cache.json
+config.json.bak-*
+
+# 用户录音、日志与媒体文件
+recordings/
+logs/
+*.log
+*.mp3
+*.m4a
+*.aac
+*.wav
+*.ts
+*.mp4
+
+# 第三方二进制与压缩包（许可证独立、体积约 654 MB）
+*.exe
+*.dll
+*.zip
+
+# 发布产物：源码包与发布包改走 GitHub Releases，不进 Git 仓库
+/release/
+
+# 根目录旧版辅助脚本含本机路径（C:\ffmpeg、D:\Radio），不入库
+/record_fm990.bat
+
+# 凭据与环境文件
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# GitHub 上传调试记录（不入库）
+github-upload-debug-*.md

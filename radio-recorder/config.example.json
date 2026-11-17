@@ -1,0 +1,22 @@
+{
+  "ffmpegPath": "",
+  "ffplayPath": "",
+  "ffmpegHome": "",
+  "stationId": "sh_news",
+  "streamUrl": "https://lhttp-hw.qtfm.cn/live/270/64k.mp3",
+  "filePrefix": "FM990",
+  "segmentMinutes": 60,
+  "codec": "copy",
+  "engine": "ffmpeg",
+  "monitor": false,
+  "volume": 80,
+  "autoMonitor": false,
+  "autoRestart": true,
+  "mode": "now",
+  "durationMinutes": 0,
+  "hourlyHours": 1,
+  "hourlyAlign": "fromNextHour",
+  "repeatDaily": false,
+  "rangeStart": "",
+  "rangeEnd": ""
+}

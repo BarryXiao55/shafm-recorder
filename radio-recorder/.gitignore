@@ -1,0 +1,39 @@
+# 运行时生成的数据 —— 不纳入版本控制 / 发布包
+config.json
+runtime.json
+epg-cache.json
+alerts.json
+
+# 用户录音与日志
+recordings/
+logs/
+*.log
+
+# 第三方二进制（体积约 654 MB，且许可证独立）
+bin/*.exe
+bin/*.dll
+bin/*.zip
+
+# FFmpeg 安装器生成的本机路径文件 / 备份 / 临时物（含绝对路径，不入库）
+bin/ffmpeg-location.json
+bin/ffmpeg-env.bat
+bin/_backup-*/
+bin/_download-*
+bin/_extract-*/
+config.json.bak-*
+
+# 发布产物与临时目录
+release/
+release/_staging/
+dist/
+*.zip
+
+# 编辑器 / 系统
+node_modules/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# 说明：stations.json 是随项目分发的默认电台库，保留跟踪。
+# 用户自定义电台会写入该文件，提交前请确认不含私人流地址或凭据。

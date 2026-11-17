@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>上海 FM 广播录制台 v3.1.12</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo"><span class="pulse"></span></div>
+      <div>
+        <h1>上海 FM 广播录制台 <span class="ver">v3.1.12</span></h1>
+        <p>多电台并行录制 · 上海本地 FM 频率库 · EPG 节目表 · 定时节目单 · 一键自检 · 外放或静音</p>
+      </div>
+    </div>
+    <div class="top-status">
+      <span id="ffmpegBadge" class="badge">环境检测中</span>
+      <span id="runBadge" class="badge">空闲</span>
+      <button id="btnAlerts" class="btn tiny ghost">告警 <span id="alertBadge" class="dot">0</span></button>
+      <button id="btnSelfTest" class="btn tiny">一键自检</button>
+      <button id="btnDetect" class="btn tiny ghost">重新检测</button>
+      <button id="btnShutdown" class="btn tiny ghost" style="color:var(--danger);border-color:rgba(239,107,107,.5)" title="停止本地服务（端口 8787）">停止服务</button>
+    </div>
+  </header>
+
+  <div id="warnBar" class="warnbar hidden">
+    <div>
+      <strong>未检测到 ffmpeg（可选组件）</strong> — 当前自动使用<b>内置直录引擎</b>：纯 MP3 流等价 <code>-c copy</code>，HLS(.m3u8) 源也由内置分片拼接引擎处理，无需安装即可录制。
+      想要更成熟的重连 / HLS 处理时，可一键下载安装（Windows 也可双击 <code>tools/install-ffmpeg.bat</code>）：
+    </div>
+    <code id="installCmd">node tools/install-ffmpeg.js</code>
+    <button id="btnCopyInstall" class="btn tiny">复制命令</button>
+  </div>
+
+  <main class="grid">
+
+    <section class="col-left">
+
+      <div class="card">
+        <div class="card-head"><h2>信号源 · 上海 FM 电台库</h2><span class="hint">实时流，不是文件</span></div>
+        <label class="field">
+          <span>选择电台（上海可收听的 FM 频率，含中央级在沪落地台）</span>
+          <select id="preset"></select>
+        </label>
+        <label class="field">
+          <span>直播流地址</span>
+          <input id="streamUrl" type="text" spellcheck="false" placeholder="https://.../64k.mp3 或 .m3u8">
+        </label>
+        <div class="row">
+          <button id="btnPreview" class="btn ghost" title="试听表单里的流 10 秒；会先停掉当前任务监听，保证同一时刻只有一路声音">试听 10 秒</button>
+          <button id="btnProbe" class="btn ghost">检测流格式</button>
+          <span class="muted">先确认能出声，再开始录制</span>
+        </div>
+        <div class="row preview-long-row">
+          <label class="inline-field">
+            <span>长试听</span>
+            <select id="previewMinutes" title="长试听时长；与任务监听、10 秒试听互斥，同一时间只有一路声音">
+              <option value="10">10 分钟</option>
+              <option value="30">30 分钟</option>
+              <option value="60">60 分钟</option>
+            </select>
+          </label>
+          <button id="btnPreviewLong" class="btn" title="按所选时长连续试听表单里的流；到时自动停止，也可随时手动停止">开始长试听</button>
+          <button id="btnPreviewStop" class="btn ghost" disabled title="停止当前试听；不影响任何录制任务">停止试听</button>
+        </div>
+        <div id="previewState" class="probe preview-state">长试听未开始 · 10 秒试听用来快速验声，长试听适合边听边做事；切换电台不会打断正在播放的声音。</div>
+        <div id="probeBox" class="probe">正在检测流格式…</div>
+
+        <details class="advanced" id="stationEditor">
+          <summary>电台库管理（查看 / 新增 / 编辑 / 删除 / 测活）</summary>
+          <div id="stationList" class="station-list"></div>
+          <div class="plan-form">
+            <div class="two">
+              <label class="field"><span>电台名称</span><input id="sName" type="text" placeholder="上海××广播"></label>
+              <label class="field"><span>FM 频率</span><input id="sFreq" type="text" placeholder="FM 99.0"></label>
+            </div>
+            <div class="two">
+              <label class="field"><span>直播流地址</span><input id="sUrl" type="text" spellcheck="false" placeholder="https://.../64k.mp3"></label>
+              <label class="field"><span>文件前缀 / 频道ID</span><input id="sPrefix" type="text" placeholder="FM990"></label>
+            </div>
+            <div class="row">
+              <input id="sChannelId" type="hidden" value="">
+              <button id="btnStationTest" class="btn tiny ghost">测试该地址</button>
+              <button id="btnStationSave" class="btn tiny primary">保存电台</button>
+              <button id="btnStationCancel" class="btn tiny ghost">清空表单</button>
+              <span id="stationMsg" class="muted small"></span>
+            </div>
+            <p class="muted small">电台库收录上海可收听的 FM 频率：SMG 本地台 + 中央级在沪落地台（如 FM 87.9）。频道 ID 用于抓 EPG 节目表（蜻蜓频道页路径），新增电台可留空，只是没有自动节目表。HLS（.m3u8）流会录成 <code>.ts</code>，依旧零重编码。</p>
+          </div>
+        </details>
+
+        <p class="note">
+          上海新闻广播是 <b>FM 93.4 MHz / AM 990 kHz 双频同步、同一套节目</b>；「990」是<b>中波</b>呼号（990 早新闻、news990.cn），不是调频频率，因此本台前缀沿用历史命名 <code>FM990</code>。
+          <b>FM 99.0 MHz 是另一个电台</b>——中央广播电视总台「中国之声」（央广一套，全国时政新闻），节目内容与上海新闻广播完全不同，本电台库（仅上海本地 FM）未收录它。<br>
+          当前流已复核为 MPEG-1 Layer III / 64 kbps / 44.1 kHz；地址会变，可用浏览器 F12 → Network 过滤 m3u8/mp3 重新抓取。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>录制模式</h2><span class="hint">选一种</span></div>
+        <div class="tabs" id="modeTabs">
+          <button class="tab active" data-mode="now">立即录制</button>
+          <button class="tab" data-mode="hourly">整点录制</button>
+          <button class="tab" data-mode="daily24">24 小时</button>
+          <button class="tab" data-mode="range">指定时间段</button>
+        </div>
+
+        <div class="mode-panel active" data-panel="now">
+          <label class="field">
+            <span>录制时长（分钟）</span>
+            <input id="durationMinutes" type="number" min="0" max="1440" step="5" value="0">
+          </label>
+          <p class="muted small">填 0 = 不限时长，一直录到手动点「停止录制」。</p>
+        </div>
+
+        <div class="mode-panel" data-panel="hourly">
+          <label class="field">
+            <span>整点对齐方式</span>
+            <select id="hourlyAlign">
+              <option value="fromNextHour">从下一个整点开始</option>
+              <option value="untilNextHour">立即开始，到下一个整点结束</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>连续录几个小时</span>
+            <input id="hourlyHours" type="number" min="1" max="24" value="1">
+          </label>
+          <p class="muted small">例：现在 21:40 选「从下一个整点开始、1 小时」→ 22:00 自动开录，23:00 自动停。</p>
+        </div>
+
+        <div class="mode-panel" data-panel="daily24">
+          <div class="info-box">立即开始，持续 24 小时（86400 秒）后自动停止。单路约 <b>691 MB/天</b>（64 kbps 原流），按小时分段即 24 个文件；多路并行按路数累加。</div>
+          <p class="muted small">想常年无人值守：勾选下方「每日重复」，结束后自动再排一个 24 小时。</p>
+        </div>
+
+        <div class="mode-panel" data-panel="range">
+          <label class="field"><span>开始时间</span><input id="rangeStart" type="datetime-local"></label>
+          <label class="field"><span>结束时间</span><input id="rangeEnd" type="datetime-local"></label>
+          <p class="muted small">到点自动开始、到点自动停止；单次最长 48 小时。勾选「每日重复」可每天固定时段录（如 06:00–07:00 早新闻）。</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>输出与音质</h2><span class="hint">落盘设置</span></div>
+        <label class="field">
+          <span>保存目录 <small>可直接输入，也可点「浏览…」可视化选择</small></span>
+          <div class="dir-row">
+            <input id="outputDir" type="text" spellcheck="false" list="dirSuggestions" placeholder="C:/.../recordings">
+            <datalist id="dirSuggestions"></datalist>
+            <button id="btnBrowseDir" class="btn tiny" type="button" title="打开可视化目录浏览器">浏览…</button>
+          </div>
+        </label>
+        <div id="dirHint" class="probe">正在检查目录…</div>
+        <div class="two">
+          <label class="field">
+            <span>文件名前缀 <small>跟随电台频率自动变化</small></span>
+            <input id="filePrefix" type="text" value="FM990">
+          </label>
+          <label class="field"><span>分段时长</span>
+            <select id="segmentMinutes">
+              <option value="0">不分段（单文件）</option>
+              <option value="15">每 15 分钟</option>
+              <option value="30">每 30 分钟</option>
+              <option value="60" selected>每 60 分钟</option>
+              <option value="120">每 120 分钟</option>
+            </select>
+          </label>
+        </div>
+        <label class="check" style="margin:0 0 6px"><input id="prefixFollow" type="checkbox" checked> 跟随所选电台自动改前缀（FM 105.7 → FM1057）</label>
+        <div id="prefixHint" class="muted small" style="margin-bottom:10px"></div>
+        <label class="field"><span>录制引擎</span>
+          <select id="engine">
+            <option value="ffmpeg" selected>FFmpeg（推荐 · 支持 HLS / 重编码）</option>
+            <option value="builtin">内置直录引擎（零依赖 · MP3 直连 / HLS 分片）</option>
+          </select>
+        </label>
+        <label class="field"><span>音质 / 编码</span>
+          <select id="codec">
+            <option value="copy" selected>最高保真 · 原样拷贝（-c copy，零二次损失）</option>
+            <option value="mp3_64">兼容用 · 重编码 MP3 64 kbps（会有二次损失）</option>
+            <option value="mp3_128">兼容用 · 重编码 MP3 128 kbps（会有二次损失且体积翻倍）</option>
+          </select>
+        </label>
+        <div class="info-box quality">
+          <b>最高保真原则</b>：<code>-c copy</code> / 字节原样写盘，不解码、不重编码、不重采样、不改音量，录到的就是电台发出的原始码流，零二次损失。
+          源流本身是 <b>64 kbps / 44.1 kHz 有损音频</b>，这是音质天花板；改码率、转格式只会再损一次。
+          内置引擎自动跳过非音频前导并做 <b>MP3 帧对齐</b>，分段精确切在帧边界；HLS 源按 TS 分片字节原样拼接，同样不重编码。
+        </div>
+        <div class="checks">
+          <label class="check"><input id="autoRestart" type="checkbox" checked><span>断线自动重连</span></label>
+          <label class="check"><input id="repeatDaily" type="checkbox"><span>每日重复（24 小时 / 时间段模式）</span></label>
+        </div>
+        <details class="advanced">
+          <summary>高级：手动指定程序路径</summary>
+          <label class="field"><span>ffmpeg.exe 路径（留空自动探测）</span><input id="ffmpegPath" type="text" spellcheck="false" placeholder="C:\ffmpeg\bin\ffmpeg.exe"></label>
+          <label class="field"><span>ffplay.exe 路径（可选）</span><input id="ffplayPath" type="text" spellcheck="false"></label>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>监听方式</h2><span class="hint">仅参数设置</span></div>
+        <label class="switch-row">
+          <input id="autoMonitor" type="checkbox">
+          <span class="switch"></span>
+          <span class="switch-label"><b>开始新任务时自动监听</b><small>只作用于手动点「开始录制」新建的任务；节目单与断点续录任务始终静音，需要时手动点亮。浏览器可能拦截「没有点击动作」的自动播放，届时点一下该任务行的「监听」按钮即可。</small></span>
+        </label>
+        <label class="field">
+          <span>监听音量 <b id="volumeVal">80</b></span>
+          <input id="volume" type="range" min="0" max="100" value="80">
+        </label>
+        <p class="muted small">
+          <b>播放控制已移到右侧「并行任务」：</b>每行末尾的「监听」按钮，点亮就听这一路，点灭就停止。
+          <b>监听是排他的</b>——同一时刻只有一路声音，点另一行会自动停掉上一行。
+          源不可监听时（HLS .m3u8、空地址）按钮自动灰掉，录制不受影响。
+          监听走浏览器独立连接，不进入录音文件；刷新页面后播放状态会复位，属浏览器自动播放策略的正常行为。
+        </p>
+      </div>
+
+    </section>
+
+    <section class="col-right">
+
+      <div class="card control">
+        <div class="control-top">
+          <div>
+            <h2>录制控制</h2>
+            <p id="controlHint" class="muted small">设置好参数后点「开始录制」</p>
+          </div>
+          <div id="countdown" class="countdown"></div>
+        </div>
+        <div class="btn-row">
+          <button id="btnStart" class="btn primary">开始录制</button>
+          <button id="btnStop" class="btn danger" disabled>停止主任务</button>
+          <button id="btnStopAll" class="btn ghost" disabled>全部停止</button>
+        </div>
+        <div class="cmd-head"><span>将要执行的 FFmpeg 命令（主引擎预览）</span><button id="btnCopyCmd" class="btn tiny ghost">复制</button></div>
+        <pre id="commandPreview" class="command">计算中…</pre>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>并行任务</h2><span id="jobCountHint" class="hint">0 路在录 · 上限 8</span></div>
+        <div class="btn-row" style="margin:0 0 10px">
+          <button id="btnClearDone" class="btn tiny ghost" disabled>清理已结束</button>
+        </div>
+        <div id="monitorHint" class="probe">监听状态：读取中…</div>
+        <div id="jobMsg" class="file-msg hidden"></div>
+        <div id="jobList" class="job-list"><p class="muted small">暂无任务</p></div>
+        <audio id="monitorAudio" preload="none" style="display:none"></audio>
+        <p class="muted small" style="margin:8px 0 0">
+          进行中的任务显示「停止」；停止后变成 <b>已完成 / 已停止 / 失败</b>，同一位置出现「删除」。
+          删除只移除任务记录，<b>磁盘上的录音文件不受影响</b>。<br>
+          <b>「监听」按钮</b>：点亮 = 正在听这一路，点灭 = 停止；同时只能点亮一个，点另一行会自动停掉上一行。
+          灰掉的按钮表示该任务的流浏览器无法直接播放（FM 87.9 的 HLS 请用 VLC 试听），<b>录制完全不受影响</b>。
+          任务记录被删除时，若正在监听会自动停止。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>运行状态</h2><span id="statClock" class="hint"></span></div>
+        <div class="stats">
+          <div class="stat"><span>状态</span><b id="statStatus">空闲</b></div>
+          <div class="stat"><span>已录制</span><b id="statElapsed">00:00:00</b></div>
+          <div class="stat"><span>剩余</span><b id="statRemaining">—</b></div>
+          <div class="stat"><span>累计大小</span><b id="statBytes">0 MB</b></div>
+          <div class="stat"><span>文件数</span><b id="statFiles">0</b></div>
+          <div class="stat"><span>重连次数</span><b id="statRestarts">0</b></div>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>运行日志</h2>
+          <div class="row">
+            <select id="logDate" class="mini-select"><option value="live">实时</option></select>
+            <button id="btnClearLog" class="btn tiny ghost" title="只清空本页显示框，不删除任何日志；之后仅显示新增日志">清空显示</button>
+            <button id="btnShowAllLog" class="btn tiny ghost hidden" title="重新显示全部日志">显示全部</button>
+          </div>
+        </div>
+        <div id="logHint" class="hint" style="margin:0 0 6px"></div>
+        <pre id="logBox" class="log">等待任务…</pre>
+        <p class="muted small" style="margin:8px 0 0">
+          「清空显示」只清本页显示框（切回实时视图），<b>不删除也不清空</b>日志，之后只显示新产生的日志；点「显示全部」可恢复。
+          日志按天写入 <code>logs/YYYY-MM-DD.log</code>，服务重启后仍可回看。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>录制文件</h2>
+          <div class="row">
+            <button id="btnOpenFolder" class="btn tiny ghost" title="在资源管理器中打开录音文件所在目录；勾选了文件则直接定位并选中它">打开目录</button>
+            <button id="btnCopyDir" class="btn tiny ghost" title="复制当前录音目录的完整路径">复制路径</button>
+            <button id="btnRefreshFiles" class="btn tiny ghost">刷新</button>
+          </div>
+        </div>
+        <div id="filesDirHint" class="probe">录音目录：读取中…</div>
+        <div class="row file-tools">
+          <button id="btnSelectMergeable" class="btn tiny ghost" title="一键勾选全部可合并的 .mp3 分段（自动跳过 .ts 与正在写入的文件）">全选可合并</button>
+          <button id="btnMerge" class="btn tiny primary" title="把勾选的 .mp3 分段按时间顺序字节拼接，零二次损失；未选够时会明确提示">合并选中分段</button>
+          <span class="tool-sep" aria-hidden="true"></span>
+          <button id="btnSelectAll" class="btn tiny ghost">全选可删</button>
+          <button id="btnSelectNone" class="btn tiny ghost">清空选择</button>
+          <button id="btnDeleteSelected" class="btn tiny danger" disabled>删除选中</button>
+          <button id="btnDeleteTests" class="btn tiny ghost">清理测试文件</button>
+          <button id="btnDeleteAll" class="btn tiny ghost" style="color:var(--danger)">删除全部…</button>
+          <span id="fileSelHint" class="muted small">已选 0 个</span>
+        </div>
+        <div id="fileMsg" class="file-msg hidden"></div>
+        <div id="fileList" class="files"><p class="muted small">暂无文件</p></div>
+        <!-- v3.1.11：回听播放器放在 #fileList 之外。renderFiles() 用 innerHTML 重建列表，
+             若 <audio> 留在行内，删除/刷新时元素被销毁，播放与进度都会被重置。 -->
+        <div id="playbackBar" class="playback-bar hidden">
+          <span id="playbackLabel" class="playback-label">正在回听：—</span>
+          <audio id="playbackAudio" controls preload="metadata"></audio>
+          <button id="btnPlaybackStop" class="icon-btn" title="停止回听（不影响录音任务）">■ 停止回听</button>
+        </div>
+        <p class="muted small" style="margin:8px 0 0">
+          <b>无损合并（按钮就在上方工具条，蓝色那个）：</b>点「全选可合并」一键勾选全部 <code>.mp3</code> 分段，或自己勾选 2–100 个 <code>.mp3</code>，再点「合并选中分段」——按文件时间顺序<b>按字节拼接</b>，不解码不重编码、零二次损失，原文件保留，生成 <code>MERGE_YYYYmmdd_HHMMSS.mp3</code>。未选够或选错类型时按钮仍可点，会明确告诉你原因。FM 87.9 录出的 <code>.ts</code> 是 HLS/AAC 流，<b>不参与 MP3 合并</b>；正在写入的文件不能合并；合并产物不会被「清理测试文件」自动删除，需手动删。<br>
+          <b>回听</b>：点文件行的「▶ 回听」，播放器出现在列表下方；<b>删除其它文件或刷新列表都不会打断回听，进度保持不变</b>。同一时刻只允许一路声音——开始回听会自动停掉任务监听/试听，反之亦然；若删除的正好是当前回听的文件，会自动停止并提示。<br>
+          <b>正在写入的文件不能删</b>——点它的「停止后删」会先停对应任务再删；也可「全部停止」后再批量删除。<br>
+          删除确认框<b>显示在页面内</b>（不再是系统弹窗），点「确定」后上方会立刻显示「正在删除…」与结果明细；取消也会明确提示。
+        </p>
+      </div>
+
+      <div class="card" id="testCard">
+        <div class="card-head"><h2>系统自检 · 测试 · 服务管理</h2><span id="testBadge" class="hint">未运行</span></div>
+        <div id="serverInfo" class="server-info">读取服务信息…</div>
+        <div class="row test-tools">
+          <button id="btnRunSelfTest" class="btn tiny primary">运行全部检查</button>
+          <select id="testEngine" class="mini-select">
+            <option value="auto">试录：自动（优先 ffmpeg）</option>
+            <option value="ffmpeg">试录：FFmpeg 引擎</option>
+            <option value="builtin">试录：内置直录引擎</option>
+          </select>
+          <button id="btnTestRecord" class="btn tiny ghost">试录 6 秒</button>
+          <button id="btnCleanTests" class="btn tiny ghost">清理测试文件</button>
+          <button id="btnCopyReport" class="btn tiny ghost">复制报告</button>
+        </div>
+        <div id="testSummary" class="test-summary">点「运行全部检查」：单元测试、ffmpeg、直播流、写盘、删除、无损合并、EPG、磁盘与本机 API 会逐项跑一遍；「试录 6 秒」会真实录一段 TEST_*.mp3 供回放验证。</div>
+        <div id="testResult" class="test-list"></div>
+        <div class="service-bar">
+          <label class="check"><input id="clearSnapshot" type="checkbox"><span>停止时清除续录快照（下次启动不再自动开录）</span></label>
+          <div class="row">
+            <button id="btnShutdown2" class="btn tiny ghost" style="color:var(--danger);border-color:rgba(239,107,107,.5)">停止服务</button>
+            <span class="muted small">等价做法：关掉 <code>start.bat</code> 的黑窗口，或运行 <code>stop-service.bat</code>；重新启动用 <code>start.bat</code> / <code>desktop.bat</code>。</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <section class="wide-grid">
+
+    <div class="card" id="epgCard">
+      <div class="card-head"><h2>EPG 电子节目表</h2><span class="hint">自动拉取 · 一键生成定时录制</span></div>
+      <p class="muted small" style="margin:0 0 10px">
+        数据源：蜻蜓 FM 各频道页公开节目单（昨日 / 今日 / 明日），每 30 分钟自动刷新并缓存到本地。
+        断网时上海新闻广播会降级到内置静态节目表。
+      </p>
+      <div class="row epg-controls">
+        <select id="epgStation" class="mini-select"></select>
+        <select id="epgDate" class="mini-select">
+          <option value="-1">昨天</option><option value="0" selected>今天</option><option value="1">明天</option>
+        </select>
+        <select id="epgRule" class="mini-select">
+          <option value="daily">生成：每天</option>
+          <option value="weekday">生成：工作日</option>
+          <option value="weekend">生成：周末</option>
+          <option value="once">生成：仅一次</option>
+        </select>
+        <button id="btnEpgRefresh" class="btn tiny ghost">刷新本台</button>
+        <button id="btnEpgRefreshAll" class="btn tiny ghost">刷新全部</button>
+        <span id="epgNote" class="muted small"></span>
+      </div>
+      <div id="epgList" class="epg-list"><p class="muted small">正在加载节目表…</p></div>
+    </div>
+
+    <div class="card" id="plansCard">
+      <div class="card-head">
+        <h2>定时节目单</h2>
+        <span class="hint">按电台并行 · 同电台不重复开录</span>
+      </div>
+      <p class="muted small" style="margin:0 0 12px">
+        按周几/日期自动开录。多电台并行时，不同电台的计划可同时触发；同一电台已有任务在跑则跳过本次。
+        <b id="nextPlanHint"></b>
+      </p>
+      <div id="planList" class="plan-list"><p class="muted small">还没有节目，点下方「添加节目」或从 EPG 一键生成。</p></div>
+
+      <div class="row quick-row">
+        <span class="muted small">快捷模板：</span>
+        <button class="btn tiny ghost" data-tpl="morning">每天早新闻 06:00 · 60 分钟</button>
+        <button class="btn tiny ghost" data-tpl="noon">工作日午间 12:00 · 60 分钟</button>
+        <button class="btn tiny ghost" data-tpl="evening">每天晚间 18:00 · 120 分钟</button>
+      </div>
+
+      <details class="plan-editor" id="planEditor">
+        <summary id="planEditorTitle">＋ 添加节目</summary>
+        <div class="plan-form">
+          <div class="two">
+            <label class="field"><span>节目名称</span><input id="pName" type="text" placeholder="990早新闻"></label>
+            <label class="field"><span>开始时间</span><input id="pStart" type="time" value="06:00"></label>
+          </div>
+          <div class="two">
+            <label class="field"><span>录制时长（分钟）</span><input id="pDuration" type="number" min="1" max="1440" value="60"></label>
+            <label class="field"><span>重复规则</span><select id="pRule"></select></label>
+          </div>
+          <div id="pWeekdaysWrap" class="weekdays hidden">
+            <span class="muted small">选择星期：</span>
+            <label><input type="checkbox" value="1">一</label>
+            <label><input type="checkbox" value="2">二</label>
+            <label><input type="checkbox" value="3">三</label>
+            <label><input type="checkbox" value="4">四</label>
+            <label><input type="checkbox" value="5">五</label>
+            <label><input type="checkbox" value="6">六</label>
+            <label><input type="checkbox" value="0">日</label>
+          </div>
+          <label class="field hidden" id="pDateWrap"><span>指定日期（仅一次）</span><input id="pDate" type="date"></label>
+          <div class="two">
+            <label class="field"><span>电台（建议必选，前缀按频率自动变化）</span><select id="pStation"></select></label>
+            <label class="field"><span>文件名前缀（自动跟随所选电台）</span><input id="pPrefix" type="text" placeholder="自动按频率生成"></label>
+          </div>
+          <div class="field prefix-tools">
+            <label class="checkbox-line"><input id="pPrefixManual" type="checkbox"> 自定义前缀（不跟随频率，由我手动填写）</label>
+            <span id="pPrefixHint" class="muted small">选择电台后会自动生成 FM 频率前缀；不同电台不会混用同一个前缀。</span>
+          </div>
+          <label class="field"><span>流地址（留空用所选电台 / 全局）</span><input id="pUrl" type="text" spellcheck="false"></label>
+          <div class="row">
+            <button id="btnPlanSave" class="btn primary tiny">保存节目</button>
+            <button id="btnPlanCancel" class="btn tiny ghost">取消编辑</button>
+            <span id="planFormMsg" class="muted small"></span>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card" id="storageCard">
+      <div class="card-head"><h2>存储与清理</h2><span class="hint">防止长期录制写满硬盘</span></div>
+      <div class="disk-bar"><div id="diskUsedBar"></div></div>
+      <div class="disk-stats">
+        <div><span>磁盘已用</span><b id="diskUsedTxt">—</b></div>
+        <div><span>剩余可用</span><b id="diskFreeTxt">—</b></div>
+        <div><span>录音占用</span><b id="diskRecTxt">—</b></div>
+        <div><span>文件数</span><b id="diskFilesTxt">—</b></div>
+      </div>
+      <label class="field"><span>保留天数（超过即视为过期）</span><input id="clRetention" type="number" min="1" max="3650" step="1"></label>
+      <div class="two">
+        <label class="field"><span>录音总量上限 GiB<small>0 = 不限</small></span><input id="clMax" type="number" min="0" step="1"></label>
+        <label class="field"><span>磁盘剩余下限 GiB<small>低于则告警</small></span><input id="clMin" type="number" min="0" step="1"></label>
+      </div>
+      <label class="check"><input id="clEnabled" type="checkbox"><span>启用自动清理（每 10 分钟检查，按策略删除最旧文件）</span></label>
+      <div class="warnbar compact" id="cleanWarn">
+        自动清理会<b>永久删除</b>输出目录里的旧录音文件。默认关闭；启用前请确认目录里没有其它重要音频。正在写入的文件永远不会被删。
+      </div>
+      <div class="row">
+        <button id="btnCleanPreview" class="btn tiny ghost">预览将删除的文件</button>
+        <button id="btnCleanRun" class="btn tiny danger" disabled>按预览清理</button>
+        <button id="btnCleanPolicy" class="btn tiny">保存策略</button>
+      </div>
+      <pre id="cleanBox" class="clean-box">点「预览」查看当前策略会删除哪些文件。</pre>
+    </div>
+
+    <div class="card" id="alertCard">
+      <div class="card-head">
+        <h2>告警中心</h2>
+        <div class="row">
+          <button id="btnAlertRead" class="btn tiny ghost">全部已读</button>
+          <button id="btnAlertClear" class="btn tiny ghost">清空</button>
+        </div>
+      </div>
+      <div id="alertList" class="alert-list"><p class="muted small">暂无告警</p></div>
+      <details class="advanced" id="alertPolicyBox">
+        <summary>通知策略（可选 Webhook 推送）</summary>
+        <label class="field"><span>Webhook 地址（企业微信机器人 / 钉钉机器人 / 自定义 JSON）</span>
+          <input id="alertWebhook" type="text" spellcheck="false" placeholder="https://..."></label>
+        <div class="two">
+          <label class="field"><span>推送格式</span><select id="alertHookType">
+            <option value="auto">自动识别</option><option value="generic">通用 JSON</option>
+            <option value="wecom">企业微信</option><option value="dingtalk">钉钉</option>
+          </select></label>
+          <label class="field"><span>开关</span><label class="check"><input id="alertEnabled" type="checkbox"><span>启用告警记录与推送</span></label></label>
+        </div>
+        <div class="checks">
+          <label class="check"><input id="alertOnFailure" type="checkbox"><span>录制失败</span></label>
+          <label class="check"><input id="alertOnDisconnect" type="checkbox"><span>反复断流</span></label>
+          <label class="check"><input id="alertOnDisk" type="checkbox"><span>磁盘水位</span></label>
+          <label class="check"><input id="alertOnPlan" type="checkbox"><span>节目单异常</span></label>
+        </div>
+        <div class="row">
+          <button id="btnAlertPolicy" class="btn tiny primary">保存策略</button>
+          <button id="btnAlertTest" class="btn tiny ghost">发送测试消息</button>
+          <span id="alertPolicyMsg" class="muted small"></span>
+        </div>
+        <p class="muted small">不配置 Webhook 也能用：所有事件都会写进运行日志并显示在上方列表。同类型事件 5 分钟内只记一次，避免刷屏。</p>
+      </details>
+    </div>
+
+  </section>
+
+  <details class="plan card">
+    <summary>开发计划与架构（点开审核）</summary>
+    <div class="plan-body">
+      <p class="muted small"><b>零 npm 依赖的本地 Node 服务 + 浏览器 UI</b>，绑定 127.0.0.1，不对外暴露。UI 只收集参数，后台服务负责多任务调度、录制引擎与写盘。v3 采用 <code>lib/jobs.js</code>（任务管理）+ <code>lib/recorder.js</code>（每任务独立引擎实例）的分层结构。</p>
+      <table>
+        <tr><th>阶段</th><th>内容</th><th>状态</th></tr>
+        <tr><td>Phase 1 · 原型</td><td>FFmpeg 命令包装 + 零依赖内置直录引擎兜底、四种录制模式、分段/命名、静音与外放监听、命令预览、状态与日志、文件回放删除、断线重连、每日重复、MP3 帧对齐与流格式自检</td><td class="ok">已实现</td></tr>
+        <tr><td>Phase 2 · 无人值守加固</td><td>定时节目单、磁盘水位与保留策略（预览 → 确认 → 清理，默认关闭）、日志按日落盘与历史回看、文件健康校验与时长估算、服务重启自动断点续录、写盘背压与 45 秒假连接检测、帧边界分段、开机自启脚本</td><td class="ok">已实现</td></tr>
+        <tr><td>Phase 2b · 本次全量交付</td><td><b>多电台并行录制</b>（任务管理器 + 每任务独立引擎，同电台防冲突，上限 8 路）、<b>上海 FM 电台库</b>（10 个本地频率 + FM 87.9 中央级在沪落地台，增删改与测活）、<b>EPG 自动拉节目表</b>（蜻蜓频道页、三日缓存、离线兜底、一键生成定时录制）、<b>独立桌面窗口</b>（Edge/Chrome --app 模式，无需 Electron）、<b>告警中心</b>（事件去重 + Webhook 推送）、<b>HLS 内置分片拼接引擎</b>、<b>无损合并分段</b>、<b>实时活跃度/速率监视</b>、多任务断点续录</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1 · 运维补齐</td><td><b>FFmpeg 9.0.2 已安装并设为主引擎</b>（bin/ 自带，纯帧流输出、分段序号命名）、界面一键停止服务、文件批量/全部删除与结果反馈、12 项一键自检、6 秒真实试录、服务信息面板</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.4 · 控制修复</td><td><b>修复「停止主任务 / 全部停止」不生效</b>（前端误发 GET，服务端只收 POST，返回 404 未知接口）、右下角提示条改为带标题的「操作提示」、停止主任务按界面显示的那一路精确下发、停止后多次校准状态并给出可见反馈、<b>「清空显示」改为纯前端</b>（只清显示框，磁盘日志保留，之后只显示新增日志，可一键恢复全部）</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.5 · 落盘设置与电台补充</td><td><b>保存目录可输入也可可视化选择</b>（页面内目录浏览器：路径跳转 / 上一级 / 快捷入口 / 子目录列表 / 新建文件夹 / 可写性检查）、<b>文件名前缀自动跟随电台频率</b>（FM 105.7 → FM1057，可一键切手动）、<b>「打开目录」修复</b>（勾选文件直接定位、给可见路径反馈、新增复制路径）、<b>新增 FM 87.9 CGTN Radio</b>（HLS / AAC 48 kHz 立体声 ≈ 298 kbps，零损失直录为 .ts）、修复 HLS 流在 <code>-reconnect_at_eof</code> 下无限重连不写盘、补齐 FM990 / FM93.4 / FM99.0 频率辨析</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.6 · 合并入口修复</td><td><b>「合并选中分段」从卡片标题栏移到文件工具条并改为主色常亮按钮</b>（此前默认 disabled + 40% 透明度，容易看成「没有这个按钮」）、新增「全选可合并」一键勾选、未选够/选错类型时给出明确提示而非灰掉、合并链路补异常捕获与结果信息条、按文件时间排序、补齐 .ts 不参与合并的说明；后端无损合并接口经真实字节比对验证无需改动</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.7 · 监听播放器修复</td><td><b>修复「监听方式」播放键变灰</b>：旧逻辑要求存在「正在运行且开启监听」的录制任务才给 &lt;audio&gt; 设 src，任务一结束播放键就没源变灰；现改为只取决于外放开关 + 流地址，与录制任务解耦。新增监听状态提示、HLS(.m3u8) 浏览器不兼容的明确说明与「复制流地址」、以 play/pause/error 事件同步播放状态、自动播放失败如实复位不再误记为成功、「试听 10 秒」对 HLS 改为明确提示</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.8 · 监听下沉到任务行</td><td><b>「监听」按钮移到「并行任务」每行末尾</b>（点亮即听、点灭即停）、<b>全局单例播放器实现排他</b>（点另一行自动停上一行；播放器放在每秒重绘区之外，列表刷新不中断声音）、不可监听源（HLS .m3u8 / 空地址）按钮自动灰掉、任务记录被删除时自动停止监听、播放失败与竞态如实复位、「监听方式」精简为音量 + <b>开始新任务时自动监听</b>（仅手动任务，节目单仍强制静音；浏览器拦截自动播放时给明确提示）、「试听 10 秒」纳入排他</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.9 · 长试听与 FFmpeg 自动安装</td><td><b>长试听 10 / 30 / 60 分钟</b>（下拉选时长、倒计时、墙钟到时自动停、断流自动重连、与任务监听双向排他）、<b>FFmpeg 一键下载 / 安装 / 路径回写脚本</b>（<code>tools/install-ffmpeg.js</code> + <code>.bat</code>：多源下载、SHA256 校验、解压、复制三个 exe、写 <code>config.json</code> / <code>bin/ffmpeg-location.json</code> / <code>bin/ffmpeg-env.bat</code>、通知服务重新检测、旧 exe 备份式升级；发布包不含二进制的说明见 <code>bin/README.md</code>）、服务端新增 <code>ffmpegHome</code> 候选路径</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.10 · 节目单前缀修复</td><td><b>修复「定时节目单里不同电台录出同一个 FM990 前缀」</b>：新增前后端共用的 <code>public/plan-prefix.js</code> 作为唯一真相来源，按电台 ID 或流地址反查频率前缀；选中电台 / 换台 / 编辑旧计划 / 只填流地址 / 快捷模板 / 存量旧数据六条入口全部自动校正；节目单表单前缀框改为自动跟随（只读）+ 可显式勾选「自定义前缀」，列表显示实际落盘前缀与修正标记；<b>不删除、不改写任何已有节目单</b>，触发录制时再按电台现算一次兜底</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.11 · 回听与列表刷新解耦</td><td><b>回听播放器移出文件列表</b>，删除其它文件 / 手动刷新 / 每秒轮询重建列表时不再销毁播放器，<b>播放状态与 currentTime 进度原样保持</b>；行内改为「▶ 回听 / ■ 停止」按钮，删除的正好是当前回听文件时自动停止并给出提示；回听与任务监听 / 短试听 / 长试听纳入全局单例排他，同一时刻只有一路声音</td><td class="ok">已实现</td></tr>
+        <tr><td>v3.1.12 · 空片段守卫</td><td><b>修复直播源尾部中断留下 0 字节「疑似损坏」文件</b>：收尾时只清理本次任务自己创建、无有效音频的空片段（不动其它文件）；<b>尾部剩余 ≤ 15 秒不再重连</b>，直接按「源中断」结束（保留每日重复排期、不误报失败）；<b>重连后首帧 12 秒超时</b>自动放弃空片段；新增 <code>interrupted</code> 终态与「空片段」标记，历史 0 字节文件不再误报损坏</td><td class="ok">已实现</td></tr>
+        <tr><td>Phase 3 · 待评估</td><td>录制内容语音转写与全文检索（需本地 ASR 模型或云端 API）、系统托盘常驻、Windows 服务化（需管理员权限）、Electron/Tauri 原生打包（当前用 --app 独立窗口替代）</td><td class="todo">待评估</td></tr>
+      </table>
+      <p class="muted small">关键取舍：<code>-c copy</code> / 字节原样写盘零二次损失；监听由浏览器独立连接播放，与录制解耦；节目单不抢占同电台正在运行的任务，但允许不同电台并行；自动清理默认关闭且只允许删除「预览」列出的文件；恢复续录只补服务重启之后的音频，中断时段不伪造数据。</p>
+    </div>
+  </details>
+
+  <footer>
+    仅供个人时移收听与私人存档。请勿公开发布、传播或商业使用录制内容，也不要绕过平台鉴权 / DRM。<br>
+    启动方式：<code>start.bat</code>（服务 + 浏览器标签） · <code>desktop.bat</code>（独立桌面窗口） · <code>install-autostart.bat</code>（开机自启） · <code>stop-service.bat</code>（停止服务）
+  </footer>
+</div>
+
+<!-- 可视化目录浏览器：页面内实现，不依赖系统文件对话框（嵌入式预览面板 / --app 窗口均可用） -->
+<div id="dirModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>选择保存目录</h3>
+      <button id="btnDirClose" class="icon-btn" type="button" title="关闭">✕</button>
+    </div>
+    <p class="muted small" style="margin:0 0 10px">路径框可直接粘贴绝对路径；双击子文件夹进入，最后点「选择当前目录」。</p>
+    <div class="dir-row">
+      <button id="btnDirUp" class="btn tiny ghost" type="button" title="返回上一级">↑ 上一级</button>
+      <input id="dirPath" type="text" spellcheck="false" placeholder="C:/Users/.../recordings">
+      <button id="btnDirGo" class="btn tiny" type="button">转到</button>
+    </div>
+    <div id="dirShortcuts" class="dir-shortcuts"></div>
+    <div id="dirStatus" class="probe">正在读取目录…</div>
+    <div id="dirList" class="dir-list"></div>
+    <div class="modal-foot">
+      <input id="dirNewName" type="text" placeholder="新文件夹名称（可选）" spellcheck="false">
+      <button id="btnDirNew" class="btn tiny ghost" type="button">新建</button>
+      <span style="flex:1"></span>
+      <button id="btnDirSelect" class="btn tiny primary" type="button">选择当前目录</button>
+    </div>
+  </div>
+</div>
+
+<script src="/plan-prefix.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

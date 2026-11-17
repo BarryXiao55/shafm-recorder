@@ -1,0 +1,113 @@
+[
+  {
+    "builtin": true,
+    "id": "sh_news",
+    "name": "上海新闻广播",
+    "freq": "FM 93.4 / AM 990",
+    "channelId": 270,
+    "prefix": "FM990",
+    "url": "https://lhttp-hw.qtfm.cn/live/270/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/270/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_traffic",
+    "name": "上海交通广播",
+    "freq": "FM 105.7 / AM 648",
+    "channelId": 266,
+    "prefix": "FM1057",
+    "url": "https://lhttp-hw.qtfm.cn/live/266/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/266/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_cbn",
+    "name": "第一财经广播",
+    "freq": "FM 90.9",
+    "channelId": 276,
+    "prefix": "FM909",
+    "url": "https://lhttp-hw.qtfm.cn/live/276/64k.mp3",
+    "backup": ""
+  },
+  {
+    "builtin": true,
+    "id": "sh_yangtze",
+    "name": "长三角之声",
+    "freq": "FM 89.9",
+    "channelId": 275,
+    "prefix": "FM899",
+    "url": "https://lhttp-hw.qtfm.cn/live/275/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/275/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_classic",
+    "name": "经典947",
+    "freq": "FM 94.7",
+    "channelId": 267,
+    "prefix": "FM947",
+    "url": "https://lhttp-hw.qtfm.cn/live/267/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/267/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_opera",
+    "name": "上海戏剧曲艺广播",
+    "freq": "FM 97.2 / AM 1197",
+    "channelId": 269,
+    "prefix": "FM972",
+    "url": "https://lhttp-hw.qtfm.cn/live/269/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/269/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_love",
+    "name": "LoveRadio 经典金曲",
+    "freq": "FM 103.7",
+    "channelId": 273,
+    "prefix": "FM1037",
+    "url": "https://lhttp-hw.qtfm.cn/live/273/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/273/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_pop",
+    "name": "动感101",
+    "freq": "FM 101.7",
+    "channelId": 274,
+    "prefix": "FM1017",
+    "url": "https://lhttp-hw.qtfm.cn/live/274/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/274/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_pudong",
+    "name": "浦东新娱乐广播",
+    "freq": "FM 100.1",
+    "channelId": 5022341,
+    "prefix": "FM1001",
+    "url": "https://lhttp-hw.qtfm.cn/live/5022341/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/5022341/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_east",
+    "name": "东上海之声",
+    "freq": "FM 106.5",
+    "channelId": 21355,
+    "prefix": "FM1065",
+    "url": "https://lhttp-hw.qtfm.cn/live/21355/64k.mp3",
+    "backup": "http://lhttp.qingting.fm/live/21355/64k.mp3"
+  },
+  {
+    "builtin": true,
+    "id": "sh_cgtn879",
+    "name": "CGTN Radio 英语环球广播",
+    "freq": "FM 87.9（上海落地 · 中央级）",
+    "channelId": 0,
+    "prefix": "FM879",
+    "url": "https://sk.cri.cn/am846.m3u8",
+    "backup": "",
+    "note": "FM 87.9 是中央广播电视总台（原中国国际广播电台）在上海的落地频率，不是 SMG 上海本地台；曾播轻松调频 / Hit FM，现转播 CGTN Radio。官方 HLS 流为 AAC 48 kHz 立体声（约 298 kbps），因此录出的是 .ts 文件、仍是 -c copy 零重编码。HLS 流浏览器 <audio> 可能无法直接试听，可用 VLC 打开地址。"
+  }
+]
