@@ -47,3 +47,9 @@ Thumbs.db
 
 # GitHub 上传调试记录（不入库）
 github-upload-debug-*.md
+
+# 根目录中文文档：仅保留在本地，不纳入 GitHub 仓库
+# 对应的可入库副本在 radio-recorder/docs/ 下
+/GitHub上传操作指南.md
+/FM990网络电台录制调研报告.md
+/FM990录制台-运行与功能操作手册.md

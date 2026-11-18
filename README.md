@@ -11,12 +11,12 @@
 3. 浏览器打开 `http://127.0.0.1:8787`。
 4. 可选：运行 `tools/install-ffmpeg.js --check` 检测 FFmpeg；未安装时程序自动使用内置直录引擎。
 
-详细配置与操作见 [运行与功能操作手册](FM990录制台-运行与功能操作手册.md)。
+详细配置与操作见 [运行与功能操作手册](radio-recorder/docs/OPERATION_MANUAL.md)。
 
 ## 文档
 
-- [运行与功能操作手册](FM990录制台-运行与功能操作手册.md) — 安装、界面、任务模式、EPG、告警、排错。
-- [网络电台录制调研报告](FM990网络电台录制调研报告.md) — 音源方案、容量估算、合规边界。
+- [运行与功能操作手册](radio-recorder/docs/OPERATION_MANUAL.md) — 安装、界面、任务模式、EPG、告警、排错。
+- [网络电台录制调研报告](radio-recorder/docs/RESEARCH_REPORT.md) — 音源方案、容量估算、合规边界。
 - [程序源码与说明](radio-recorder/README.md) — 目录结构、接口、测试与发布。
 
 ## 主要特性
@@ -33,15 +33,13 @@
 
 ```text
 .
-├── FM990录制台-运行与功能操作手册.md
-├── FM990网络电台录制调研报告.md
 ├── radio-recorder/
 │   ├── server.js              # HTTP 服务与 API
 │   ├── public/                # 前端界面
 │   ├── lib/                   # 录制、任务、排期、存储等模块
 │   ├── tools/                 # FFmpeg 安装与发布构建脚本
 │   ├── test/                  # 自测脚本
-│   ├── docs/                  # 项目内文档
+│   ├── docs/                  # 项目内文档（操作手册 / 调研报告）
 │   ├── README.md              # 程序说明
 │   └─ stations.json           # 上海 FM 电台库
 └── .gitignore / .gitattributes
